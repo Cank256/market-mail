@@ -1,0 +1,45 @@
+{
+  "name": "market-mail-api",
+  "version": "1.0.0",
+  "description": "API for MarketMail - a crowdsourced produce-price exchange via email.",
+  "main": "src/server.ts",
+  "scripts": {
+    "build": "tsc --noEmit",
+    "start": "ts-node src/server.ts",
+    "dev": "ts-node-dev src/server.ts",
+    "test": "jest",
+    "lint": "eslint . --ext .ts",
+    "format": "prettier --write ."
+  },
+  "dependencies": {
+    "axios": "^1.9.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "mongoose": "^7.5.0",
+    "nodemailer": "^6.4.11",
+    "postmark": "^3.0.18",
+    "zod": "^3.22.2"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.18",
+    "@types/express": "^5.0.2",
+    "@types/node": "^22.15.21",
+    "eslint": "^7.32.0",
+    "jest": "^27.2.5",
+    "prettier": "^2.5.1",
+    "supertest": "^6.1.6",
+    "ts-node": "^10.9.2",
+    "ts-node-dev": "^2.0.0",
+    "typescript": "^5.8.3"
+  },
+  "keywords": [
+    "market",
+    "email",
+    "api",
+    "typescript",
+    "mongoose"
+  ],
+  "author": "Caleb",
+  "license": "MIT"
+}
