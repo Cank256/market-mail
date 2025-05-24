@@ -87,7 +87,7 @@ export const fetchMarketHistory = async (
   endDate?: Date
 ) => {
   try {
-    const params: any = { page, limit };
+    const params: { page: number; limit: number; startDate?: string; endDate?: string } = { page, limit };
     if (startDate) params.startDate = startDate.toISOString();
     if (endDate) params.endDate = endDate.toISOString();
     
@@ -95,6 +95,16 @@ export const fetchMarketHistory = async (
     return response.data;
   } catch (error) {
     console.error('Error fetching market history:', error);
+    throw error;
+  }
+};
+
+export const fetchLatestMarketsActivity = async () => {
+  try {
+    const response = await api.get('/markets/latest');
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching latest markets activity:', error);
     throw error;
   }
 };

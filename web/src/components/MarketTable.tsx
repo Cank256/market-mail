@@ -2,6 +2,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { useEffect, useState } from "react";
+import { fetchLatestMarketPrices, fetchMarkets } from "../services/api";
 
 // Define interfaces based on actual API response
 interface PriceItem {
@@ -31,23 +32,16 @@ export const MarketTable = ({ selectedMarket }: MarketTableProps) => {
       setLoading(true);
       setError(null);
       try {
-        const apiUrl = selectedMarket && selectedMarket !== "all"
-          ? `/api/markets/${selectedMarket}/latest` // Adjusted to /latest as per API docs for specific market
-          : "/api/markets/latest"; // Assuming an endpoint for all latest market prices
-        
-        const response = await fetch(`http://localhost:3000${apiUrl}`);
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        const result = await response.json();
-        if (result.success) {
-          // The API returns an object with a 'data' property.
-          // If fetching all markets, data is an array. If specific market, data is an object.
-          // We need to ensure setMarketData always receives an array.
-          const dataArray = Array.isArray(result.data) ? result.data : (result.data ? [result.data] : []);
-          setMarketData(dataArray);
+        if (selectedMarket && selectedMarket !== "all") {
+          // Fetch data for specific market
+          const data = await fetchLatestMarketPrices(selectedMarket);
+          setMarketData([data]);
         } else {
-          throw new Error(result.message || "Failed to fetch market data");
+          // For "all" markets, we need to fetch all markets first, then get latest prices for each
+          const markets = await fetchMarkets();
+          const marketDataPromises = markets.map(market => fetchLatestMarketPrices(market));
+          const allMarketData = await Promise.all(marketDataPromises);
+          setMarketData(allMarketData.filter(data => data)); // Filter out any null/undefined results
         }
       } catch (err) {
         setError(err instanceof Error ? err.message : "An unknown error occurred");

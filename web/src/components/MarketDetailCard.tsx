@@ -3,6 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Locate, Loader2, AlertTriangle } from 'lucide-react';
+import { fetchLatestMarketPrices } from "../services/api";
 
 interface ProductPrice {
   product: string;
@@ -30,16 +31,16 @@ export const MarketDetailCard = ({ marketName, onLocateMarket }: MarketDetailCar
       setLoading(true);
       setError(null);
       try {
-        const response = await fetch(`http://localhost:3000/api/markets/${encodeURIComponent(marketName)}/latest`);
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        const result = await response.json();
-        if (result.success && result.data) {
-          setMarketDetail(result.data);
-        } else {
-          throw new Error(result.message || 'Failed to fetch market details');
-        }
+        const data = await fetchLatestMarketPrices(marketName);
+        // Transform MarketPrice to MarketDetail format
+        const marketDetail: MarketDetail = {
+          market: data.market,
+          products: data.priceItems.map(item => ({
+            product: item.product,
+            price: item.price
+          }))
+        };
+        setMarketDetail(marketDetail);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'An unknown error occurred');
         console.error(`Error fetching details for market ${marketName}:`, err);

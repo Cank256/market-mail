@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -11,6 +11,7 @@ import { StatsOverview } from "@/components/StatsOverview";
 import { EmailInstructions } from "@/components/EmailInstructions";
 import { CountryDropdown } from "@/components/CountryDropdown";
 import { MarketDetailCard } from "@/components/MarketDetailCard"; // Import the new component
+import { fetchMarkets, fetchLatestMarketsActivity } from "@/services/api"; // Import API service functions
 
 interface MarketInfo {
   name: string;
@@ -49,42 +50,29 @@ const Index = () => {
   const [activityError, setActivityError] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchMarkets = async () => {
+    const loadMarkets = async () => {
       try {
-        const response = await fetch("http://localhost:3000/api/markets");
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        const result = await response.json();
-        if (result.success && Array.isArray(result.data)) {
-           const marketsArray = result.data.map((market: any) => ({ 
-            name: typeof market === 'string' ? market : (market.name || market.market || 'Unknown Market') 
-          }));
-          setAvailableMarkets(marketsArray.filter(m => m.name && m.name !== 'Unknown Market'));
-        } else {
-          console.error("Failed to fetch markets list or data is not an array:", result.message);
-          setAvailableMarkets([]);
-        }
+        const marketsData = await fetchMarkets();
+        const marketsArray = marketsData.map((market: string | { name?: string; market?: string }) => ({ 
+          name: typeof market === 'string' ? market : (market.name || market.market || 'Unknown Market') 
+        }));
+        setAvailableMarkets(marketsArray.filter(m => m.name && m.name !== 'Unknown Market'));
       } catch (error) {
         console.error("Error fetching markets:", error);
         setAvailableMarkets([]);
       }
     };
     
-    const fetchMarketActivity = async () => {
+    const loadMarketActivity = async () => {
       setActivityLoading(true);
       setActivityError(null);
       try {
-        const response = await fetch("http://localhost:3000/api/markets/latest");
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        const result = await response.json();
+        const result = await fetchLatestMarketsActivity();
         if (result.success && Array.isArray(result.data)) {
           // Process data to find the latest update per market
           // API returns: { market: string, product: string, price: number, lastReportedAt: string }[]
           const latestActivityByMarket: { [key: string]: string } = {};
-          result.data.forEach((item: any) => {
+          result.data.forEach((item: { market?: string; lastReportedAt?: string }) => {
             if (item.market && item.lastReportedAt) {
               if (!latestActivityByMarket[item.market] || new Date(item.lastReportedAt) > new Date(latestActivityByMarket[item.market])) {
                 latestActivityByMarket[item.market] = item.lastReportedAt;
@@ -116,8 +104,8 @@ const Index = () => {
       }
     };
 
-    fetchMarkets();
-    fetchMarketActivity();
+    loadMarkets();
+    loadMarketActivity();
   }, []);
 
   const handleLocateMarket = (marketName: string) => {

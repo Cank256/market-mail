@@ -1,5 +1,6 @@
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { useEffect, useState } from 'react';
+import { fetchMarketSummary } from "../services/api";
 
 interface PriceChartProps {
   showDetailed?: boolean;
@@ -22,18 +23,11 @@ export const PriceChart = ({ showDetailed = false, selectedMarket }: PriceChartP
       setLoading(true);
       setError(null);
       try {
-        // API endpoint for historical data / summary for trends
-        // This assumes an endpoint like /api/markets/:market/summary or /api/markets/summary
-        // The actual API endpoint for trends/historical data might differ.
-        // For now, using a placeholder that fetches a summary which might contain historical data points.
+        // Use centralized API service to fetch market summary
         const marketParam = selectedMarket && selectedMarket !== "all" ? selectedMarket : "all"; // Use a default or aggregated market if 'all'
-        const apiUrl = `/api/markets/${marketParam}/summary?days=30`; // Fetch 30 days summary for trends
-
-        const response = await fetch(`http://localhost:3000${apiUrl}`);
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        const result = await response.json();
+        const days = 30; // Fetch 30 days summary for trends
+        
+        const result = await fetchMarketSummary(marketParam, days);
 
         if (result.success && result.data) {
           // The API's /summary endpoint returns data structured as MarketSummary:
@@ -74,7 +68,7 @@ export const PriceChart = ({ showDetailed = false, selectedMarket }: PriceChartP
     };
 
     // Helper function to transform API summary data to chart data format
-    const transformSummaryToChartData = (products: any[], productKeySet: Set<string>): PriceDataPoint[] => {
+    const transformSummaryToChartData = (products: Array<{ product: string; history?: Array<{ date: string; price: number }> }>, productKeySet: Set<string>): PriceDataPoint[] => {
       const dataByDate: { [date: string]: PriceDataPoint } = {};
       products.forEach(product => {
         const productKey = `${product.product.toLowerCase().replace(/\s/g, '_')}`; // e.g., maize_kg
