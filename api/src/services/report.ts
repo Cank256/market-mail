@@ -45,10 +45,16 @@ export class ReportService {
     startDate: Date,
     endDate: Date
   ): Promise<MarketSummary> {
-    const marketData = await MarketPrice.find({
-      market,
+    // Handle 'all' markets case
+    const query: any = {
       date: { $gte: startDate, $lte: endDate }
-    }).sort({ date: 1 });
+    };
+    
+    if (market !== 'all') {
+      query.market = market;
+    }
+    
+    const marketData = await MarketPrice.find(query).sort({ date: 1 });
 
     if (marketData.length === 0) {
       throw new Error(`No data found for market ${market} in the specified date range`);
@@ -83,7 +89,7 @@ export class ReportService {
     });
 
     return {
-      market,
+      market: market === 'all' ? 'All Markets' : market,
       totalSubmissions: marketData.length,
       uniqueProducts: productStats.size,
       dateRange: {
