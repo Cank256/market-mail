@@ -45,10 +45,18 @@ export const fetchMarketSummary = async (market: string, days: number = 30) => {
     const response = await api.get(`/markets/${market}/summary`, {
       params: { days }
     });
-    return response.data.data;
+    return {
+      success: true,
+      data: response.data.data,
+      message: 'Market summary fetched successfully'
+    };
   } catch (error) {
     console.error('Error fetching market summary:', error);
-    throw error;
+    return {
+      success: false,
+      data: null,
+      message: error instanceof Error ? error.message : 'Failed to fetch market summary'
+    };
   }
 };
 
