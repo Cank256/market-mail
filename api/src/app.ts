@@ -24,6 +24,13 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 // Initialize email service
 EmailService.initialize();
 
+app.get('/', (req, res) => {
+    res.json({
+        message: 'Welcome to the MarketMail API',
+        version: '1.0.0'
+    });
+});
+
 // Health check endpoint
 app.get('/health', (req, res) => {
     res.json({
