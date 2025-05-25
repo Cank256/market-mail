@@ -26,6 +26,7 @@ EmailService.initialize();
 
 app.get('/', (req, res) => {
     res.json({
+        status: 'success',
         message: 'Welcome to the MarketMail API',
         version: '1.0.0'
     });
