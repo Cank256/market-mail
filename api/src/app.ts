@@ -1,15 +1,14 @@
 import express from 'express';
 import cors from 'cors';
-import mongoose from 'mongoose';
 import { errorHandler } from './middleware/errorHandler';
-import { config } from './config/index';
+import { config } from './config';
 import { EmailService } from './services/emailService';
 import publicRoutes from './routes/public';
 import webhookRouter from './webhook';
+import { connectMongoDB } from './config/db';
 
 const app = express();
 
-// CORS configuration
 app.use(cors({
     origin: [config.FRONTEND_URL, 'http://localhost:3000', 'http://localhost:5173'],
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
@@ -17,11 +16,9 @@ app.use(cors({
     credentials: true
 }));
 
-// Middleware
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Initialize email service
 EmailService.initialize();
 
 app.get('/', (req, res) => {
@@ -32,7 +29,6 @@ app.get('/', (req, res) => {
     });
 });
 
-// Health check endpoint
 app.get('/health', (req, res) => {
     res.json({
         status: 'healthy',
@@ -41,11 +37,9 @@ app.get('/health', (req, res) => {
     });
 });
 
-// Set up routes
 app.use('/api', publicRoutes);
 app.use('/webhook', webhookRouter);
 
-// 404 handler
 app.use('*', (req, res) => {
     res.status(404).json({
         success: false,
@@ -54,16 +48,10 @@ app.use('*', (req, res) => {
     });
 });
 
-// Error handling middleware
 app.use(errorHandler);
 
-// Connect to MongoDB
-mongoose.connect(config.MONGODB_URI)
-.then(() => {
-    console.log('MongoDB connected successfully');
-    console.log(`Database: ${config.MONGODB_URI}`);
-})
-.catch(err => {
+// Connect to MongoDB once per cold start
+connectMongoDB().catch(err => {
     console.error('MongoDB connection error:', err);
     process.exit(1);
 });
