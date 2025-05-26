@@ -12,8 +12,7 @@ router.post('/inbound', postmarkVerification, async (req: Request, res: Response
         const marketData = await ParserService.parse(req.body);
         
         // Save to database
-        const marketPrice = new MarketPrice(marketData);
-        await marketPrice.save();
+        const savedMarketPrice = await MarketPrice.create(marketData);
 
         // Generate formatted response content
         const htmlContent = ParserService.formatToHtml(marketData);

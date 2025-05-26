@@ -51,9 +51,23 @@ app.use('*', (req, res) => {
 app.use(errorHandler);
 
 // Connect to MongoDB once per cold start
-connectMongoDB().catch(err => {
+connectMongoDB().then(async () => {
+    console.log('MongoDB connection established.');
+    // Create indexes for all collections
+    try {
+        const { MarketPrice } = await import('./models/MarketPrice');
+        await MarketPrice.createIndexes();
+        console.log('Database indexes created successfully.');
+    } catch (err) {
+        console.error('Error creating database indexes:', err);
+    }
+}).catch(err => {
     console.error('MongoDB connection error:', err);
     process.exit(1);
+});
+
+app.listen(config.PORT, () => {
+    console.log(`Server is running on port ${config.PORT}`);
 });
 
 export default app;

@@ -1,260 +1,344 @@
 import { Router, Request, Response } from 'express';
-import { ReportService } from '../services/report';
-import { MarketPrice } from '../models/MarketPrice';
+import { getDb } from '../config/db';
 
 const router = Router();
 
+// Utility: get collection reference
+const getCollection = () => getDb().collection('marketprices');
+
 // Get all available markets
 router.get('/markets', async (req: Request, res: Response): Promise<void> => {
-    try {
-        const markets = await ReportService.getAllMarkets();
-        res.json({
-            success: true,
-            data: markets
-        });
-    } catch (error) {
-        console.error('Error fetching markets:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Failed to fetch markets',
-            error: error instanceof Error ? error.message : String(error)
-        });
-    }
+  try {
+    const collection = getCollection();
+    // Distinct market names
+    const markets = await collection.distinct('market');
+
+    res.json({
+      success: true,
+      data: markets
+    });
+  } catch (error) {
+    console.error('Error fetching markets:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch markets',
+      error: error instanceof Error ? error.message : String(error)
+    });
+  }
 });
 
 // Get latest prices for a specific market
 router.get('/markets/:market/latest', async (req: Request, res: Response): Promise<void> => {
-    try {
-        const { market } = req.params;
-        const latestData = await ReportService.getLatestMarketPrices(market);
-        
-        if (!latestData) {
-            res.status(404).json({
-                success: false,
-                message: `No data found for market: ${market}`
-            });
-            return;
-        }
+  try {
+    const { market } = req.params;
+    const collection = getCollection();
 
-        res.json({
-            success: true,
-            data: latestData
-        });
-    } catch (error) {
-        console.error('Error fetching latest market prices:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Failed to fetch latest market prices',
-            error: error instanceof Error ? error.message : String(error)
-        });
+    // Find latest date for the market
+    const latestRecord = await collection.find({ market })
+      .sort({ date: -1 })
+      .limit(1)
+      .toArray();
+
+    if (latestRecord.length === 0) {
+      res.status(404).json({
+        success: false,
+        message: `No data found for market: ${market}`
+      });
+      return;
     }
+
+    res.json({
+      success: true,
+      data: latestRecord[0]
+    });
+  } catch (error) {
+    console.error('Error fetching latest market prices:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch latest market prices',
+      error: error instanceof Error ? error.message : String(error)
+    });
+  }
 });
 
-// Get market summary with statistics
+// Get market summary with statistics (average price per product over time range)
 router.get('/markets/:market/summary', async (req: Request, res: Response): Promise<void> => {
-    try {
-        const { market } = req.params;
-        const { days = 30 } = req.query;
-        
-        const endDate = new Date();
-        const startDate = new Date();
-        startDate.setDate(endDate.getDate() - parseInt(days as string));
+  try {
+    const { market } = req.params;
+    const days = req.query.days ? parseInt(req.query.days as string) : 30;
+    const endDate = new Date();
+    const startDate = new Date();
+    startDate.setDate(endDate.getDate() - days);
 
-        const summary = await ReportService.generateMarketSummary(market, startDate, endDate);
-        
-        res.json({
-            success: true,
-            data: summary
-        });
-    } catch (error) {
-        console.error('Error generating market summary:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Failed to generate market summary',
-            error: error instanceof Error ? error.message : String(error)
-        });
-    }
+    const collection = getCollection();
+
+    // Aggregate average price per product in given date range and market
+    const pipeline = [
+      { $match: { market, date: { $gte: startDate, $lte: endDate } } },
+      { $unwind: '$priceItems' },
+      {
+        $group: {
+          _id: '$priceItems.product',
+          averagePrice: { $avg: '$priceItems.price' },
+          minPrice: { $min: '$priceItems.price' },
+          maxPrice: { $max: '$priceItems.price' },
+          count: { $sum: 1 }
+        }
+      },
+      {
+        $project: {
+          product: '$_id',
+          averagePrice: 1,
+          minPrice: 1,
+          maxPrice: 1,
+          count: 1,
+          _id: 0
+        }
+      },
+      { $sort: { product: 1 } }
+    ];
+
+    const summary = await collection.aggregate(pipeline).toArray();
+
+    res.json({
+      success: true,
+      data: summary
+    });
+  } catch (error) {
+    console.error('Error generating market summary:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to generate market summary',
+      error: error instanceof Error ? error.message : String(error)
+    });
+  }
 });
 
 // Get price trend for a specific product
 router.get('/markets/:market/products/:product/trend', async (req: Request, res: Response): Promise<void> => {
-    try {
-        const { market, product } = req.params;
-        const { days = 30 } = req.query;
+  try {
+    const { market, product } = req.params;
+    const days = req.query.days ? parseInt(req.query.days as string) : 30;
+    const endDate = new Date();
+    const startDate = new Date();
+    startDate.setDate(endDate.getDate() - days);
 
-        const trend = await ReportService.generateProductTrend(
-            market,
-            product,
-            parseInt(days as string)
-        );
+    const collection = getCollection();
 
-        if (!trend) {
-            res.status(404).json({
-                success: false,
-                message: `No trend data found for product ${product} in market ${market}`
-            });
-            return;
+    // Aggregate daily average price for the product in market over time
+    const pipeline = [
+      { $match: { market, date: { $gte: startDate, $lte: endDate } } },
+      { $unwind: '$priceItems' },
+      { $match: { 'priceItems.product': product } },
+      {
+        $group: {
+          _id: '$date',
+          averagePrice: { $avg: '$priceItems.price' }
         }
+      },
+      {
+        $project: {
+          date: '$_id',
+          averagePrice: 1,
+          _id: 0
+        }
+      },
+      { $sort: { date: 1 } }
+    ];
 
-        res.json({
-            success: true,
-            data: trend
-        });
-    } catch (error) {
-        console.error('Error generating product trend:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Failed to generate product trend',
-            error: error instanceof Error ? error.message : String(error)
-        });
+    const trend = await collection.aggregate(pipeline).toArray();
+
+    if (trend.length === 0) {
+      res.status(404).json({
+        success: false,
+        message: `No trend data found for product ${product} in market ${market}`
+      });
+      return;
     }
+
+    res.json({
+      success: true,
+      data: trend
+    });
+  } catch (error) {
+    console.error('Error generating product trend:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to generate product trend',
+      error: error instanceof Error ? error.message : String(error)
+    });
+  }
 });
 
 // Get multi-product trend data across markets
 router.get('/trends/products', async (req: Request, res: Response): Promise<void> => {
-    try {
-        const { products, days = 30 } = req.query;
-        
-        if (!products) {
-            res.status(400).json({
-                success: false,
-                message: 'Products parameter is required'
-            });
-            return;
-        }
-
-        const productList = (products as string).split(',').map(p => p.trim());
-        const trends = await ReportService.generateMultiProductTrend(
-            productList,
-            parseInt(days as string)
-        );
-
-        res.json({
-            success: true,
-            data: trends
-        });
-    } catch (error) {
-        console.error('Error generating multi-product trends:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Failed to generate multi-product trends',
-            error: error instanceof Error ? error.message : String(error)
-        });
+  try {
+    const productsParam = req.query.products;
+    if (!productsParam) {
+      res.status(400).json({
+        success: false,
+        message: 'Products parameter is required'
+      });
+      return;
     }
+
+    const days = req.query.days ? parseInt(req.query.days as string) : 30;
+    const productList = (productsParam as string).split(',').map(p => p.trim());
+    const endDate = new Date();
+    const startDate = new Date();
+    startDate.setDate(endDate.getDate() - days);
+
+    const collection = getCollection();
+
+    // Aggregate daily average price per product (multiple products)
+    const pipeline = [
+      { $match: { date: { $gte: startDate, $lte: endDate } } },
+      { $unwind: '$priceItems' },
+      { $match: { 'priceItems.product': { $in: productList } } },
+      {
+        $group: {
+          _id: { product: '$priceItems.product', date: '$date' },
+          averagePrice: { $avg: '$priceItems.price' }
+        }
+      },
+      {
+        $project: {
+          product: '$_id.product',
+          date: '$_id.date',
+          averagePrice: 1,
+          _id: 0
+        }
+      },
+      { $sort: { product: 1, date: 1 } }
+    ];
+
+    const trends = await collection.aggregate(pipeline).toArray();
+
+    res.json({
+      success: true,
+      data: trends
+    });
+  } catch (error) {
+    console.error('Error generating multi-product trends:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to generate multi-product trends',
+      error: error instanceof Error ? error.message : String(error)
+    });
+  }
 });
 
 // Get historical data for a market with pagination
 router.get('/markets/:market/history', async (req: Request, res: Response): Promise<void> => {
-    try {
-        const { market } = req.params;
-        const { page = 1, limit = 10, startDate, endDate } = req.query;
-        
-        const query: any = { market };
-        
-        if (startDate || endDate) {
-            query.date = {};
-            if (startDate) query.date.$gte = new Date(startDate as string);
-            if (endDate) query.date.$lte = new Date(endDate as string);
-        }
+  try {
+    const { market } = req.params;
+    const page = req.query.page ? parseInt(req.query.page as string) : 1;
+    const limit = req.query.limit ? parseInt(req.query.limit as string) : 10;
+    const startDateStr = req.query.startDate as string | undefined;
+    const endDateStr = req.query.endDate as string | undefined;
 
-        const skip = (parseInt(page as string) - 1) * parseInt(limit as string);
-        
-        const [data, total] = await Promise.all([
-            MarketPrice.find(query)
-                .sort({ date: -1 })
-                .skip(skip)
-                .limit(parseInt(limit as string))
-                .exec(),
-            MarketPrice.countDocuments(query)
-        ]);
+    const query: any = { market };
 
-        res.json({
-            success: true,
-            data,
-            pagination: {
-                page: parseInt(page as string),
-                limit: parseInt(limit as string),
-                total,
-                pages: Math.ceil(total / parseInt(limit as string))
-            }
-        });
-    } catch (error) {
-        console.error('Error fetching market history:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Failed to fetch market history',
-            error: error instanceof Error ? error.message : String(error)
-        });
+    if (startDateStr || endDateStr) {
+      query.date = {};
+      if (startDateStr) query.date.$gte = new Date(startDateStr);
+      if (endDateStr) query.date.$lte = new Date(endDateStr);
     }
+
+    const skip = (page - 1) * limit;
+
+    const collection = getCollection();
+
+    const [data, total] = await Promise.all([
+      collection.find(query).sort({ date: -1 }).skip(skip).limit(limit).toArray(),
+      collection.countDocuments(query)
+    ]);
+
+    res.json({
+      success: true,
+      data,
+      pagination: {
+        page,
+        limit,
+        total,
+        pages: Math.ceil(total / limit)
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching market history:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch market history',
+      error: error instanceof Error ? error.message : String(error)
+    });
+  }
 });
 
 // Add sample data for testing (development only)
 router.post('/seed-sample-data', async (req: Request, res: Response): Promise<void> => {
-    try {
-        // Only allow in development
-        if (process.env.NODE_ENV === 'production') {
-            res.status(403).json({
-                success: false,
-                message: 'Sample data seeding not allowed in production'
-            });
-            return;
-        }
-
-        const sampleData = [
-            {
-                market: 'Nakasero Market',
-                date: new Date('2025-05-24'),
-                submitterEmail: 'test@example.com',
-                priceItems: [
-                    { product: 'Tomatoes', unit: 'kg', price: 3000 },
-                    { product: 'Onions', unit: 'kg', price: 2500 },
-                    { product: 'Irish Potatoes', unit: 'kg', price: 4000 },
-                    { product: 'Cabbage', unit: 'head', price: 1500 }
-                ]
-            },
-            {
-                market: 'Owino Market',
-                date: new Date('2025-05-24'),
-                submitterEmail: 'test@example.com',
-                priceItems: [
-                    { product: 'Tomatoes', unit: 'kg', price: 2800 },
-                    { product: 'Onions', unit: 'kg', price: 2300 },
-                    { product: 'Irish Potatoes', unit: 'kg', price: 3800 },
-                    { product: 'Carrots', unit: 'kg', price: 3500 }
-                ]
-            },
-            {
-                market: 'Kalerwe Market',
-                date: new Date('2025-05-23'),
-                submitterEmail: 'test@example.com',
-                priceItems: [
-                    { product: 'Tomatoes', unit: 'kg', price: 3200 },
-                    { product: 'Onions', unit: 'kg', price: 2600 },
-                    { product: 'Irish Potatoes', unit: 'kg', price: 4200 },
-                    { product: 'Green Peppers', unit: 'kg', price: 5000 }
-                ]
-            }
-        ];
-
-        // Clear existing data
-        await MarketPrice.deleteMany({});
-        
-        // Insert sample data
-        await MarketPrice.insertMany(sampleData);
-
-        res.json({
-            success: true,
-            message: 'Sample data seeded successfully',
-            count: sampleData.length
-        });
-    } catch (error) {
-        console.error('Error seeding sample data:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Failed to seed sample data',
-            error: error instanceof Error ? error.message : String(error)
-        });
+  try {
+    if (process.env.NODE_ENV === 'production') {
+      res.status(403).json({
+        success: false,
+        message: 'Sample data seeding not allowed in production'
+      });
+      return;
     }
+
+    const sampleData = [
+      {
+        market: 'Nakasero Market',
+        date: new Date('2025-05-24'),
+        submitterEmail: 'test@example.com',
+        priceItems: [
+          { product: 'Tomatoes', unit: 'kg', price: 3000 },
+          { product: 'Onions', unit: 'kg', price: 2500 },
+          { product: 'Irish Potatoes', unit: 'kg', price: 4000 },
+          { product: 'Cabbage', unit: 'head', price: 1500 }
+        ]
+      },
+      {
+        market: 'Owino Market',
+        date: new Date('2025-05-24'),
+        submitterEmail: 'test@example.com',
+        priceItems: [
+          { product: 'Tomatoes', unit: 'kg', price: 2800 },
+          { product: 'Onions', unit: 'kg', price: 2300 },
+          { product: 'Irish Potatoes', unit: 'kg', price: 3800 },
+          { product: 'Carrots', unit: 'kg', price: 3500 }
+        ]
+      },
+      {
+        market: 'Kalerwe Market',
+        date: new Date('2025-05-23'),
+        submitterEmail: 'test@example.com',
+        priceItems: [
+          { product: 'Tomatoes', unit: 'kg', price: 3200 },
+          { product: 'Onions', unit: 'kg', price: 2600 },
+          { product: 'Irish Potatoes', unit: 'kg', price: 4200 },
+          { product: 'Green Peppers', unit: 'kg', price: 5000 }
+        ]
+      }
+    ];
+
+    const collection = getCollection();
+
+    await collection.deleteMany({});
+    const insertResult = await collection.insertMany(sampleData);
+
+    res.json({
+      success: true,
+      message: 'Sample data seeded successfully',
+      insertedCount: insertResult.insertedCount
+    });
+  } catch (error) {
+    console.error('Error seeding sample data:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to seed sample data',
+      error: error instanceof Error ? error.message : String(error)
+    });
+  }
 });
 
 export default router;

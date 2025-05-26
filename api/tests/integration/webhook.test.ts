@@ -1,14 +1,14 @@
 import request from 'supertest';
 import app from '../../src/app'; // Adjust the path as necessary
-import { connect, disconnect } from '../../src/config/database'; // Assuming you have a database connection setup
+import { connectDB, disconnectDB } from '../../src/config/db'; // MongoDB connection setup
 
 describe('Webhook Integration Tests', () => {
     beforeAll(async () => {
-        await connect(); // Connect to the database before tests
+        await connectDB(); // Connect to the database before tests
     });
 
     afterAll(async () => {
-        await disconnect(); // Disconnect from the database after tests
+        await disconnectDB(); // Disconnect from the database after tests
     });
 
     it('should successfully process a valid webhook request', async () => {

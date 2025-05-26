@@ -7,6 +7,7 @@ dotenv.config();
 export const config = {
     PORT: process.env.PORT || 3000,
     MONGODB_URI: process.env.MONGODB_URI || 'mongodb://localhost:27017/marketmail',
+    DB_NAME: process.env.DB_NAME || 'marketmail',
     POSTMARK_SERVER_TOKEN: process.env.POSTMARK_SERVER_TOKEN || '',
     POSTMARK_ACCOUNT_TOKEN: process.env.POSTMARK_ACCOUNT_TOKEN || '',
     POSTMARK_INBOUND_SECRET: process.env.POSTMARK_INBOUND_SECRET || '',

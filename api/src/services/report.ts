@@ -1,6 +1,7 @@
 // This file exports functions to generate reports based on market price data.
 
 import { MarketPrice, IMarketPrice } from '../models/MarketPrice';
+import { getDb } from '../config/db';
 
 interface PriceTrend {
   date: string;
@@ -54,7 +55,8 @@ export class ReportService {
       query.market = market;
     }
     
-    const marketData = await MarketPrice.find(query).sort({ date: 1 });
+    const collection = getDb().collection<IMarketPrice>('marketprices');
+    const marketData = await collection.find(query).sort({ date: 1 }).toArray();
 
     if (marketData.length === 0) {
       throw new Error(`No data found for market ${market} in the specified date range`);
@@ -116,11 +118,12 @@ export class ReportService {
     const startDate = new Date();
     startDate.setDate(endDate.getDate() - days);
 
-    const marketData = await MarketPrice.find({
+    const collection = getDb().collection<IMarketPrice>('marketprices');
+    const marketData = await collection.find({
       market,
       date: { $gte: startDate, $lte: endDate },
       "priceItems.product": product
-    }).sort({ date: 1 });
+    }).sort({ date: 1 }).toArray();
 
     if (marketData.length === 0) {
       return null;
