@@ -96,7 +96,7 @@ export const MarketDetailCard = ({ marketName, onLocateMarket }: MarketDetailCar
     );
   }
 
-  const sampleProducts = marketDetail.products.slice(0, 2); // Show up to 2 sample products
+  const sampleProducts = marketDetail.products;
 
   return (
     <Card className="hover:shadow-lg transition-shadow">
