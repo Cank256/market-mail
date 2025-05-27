@@ -135,59 +135,6 @@ router.get('/markets/:market/latest', async (req: Request, res: Response): Promi
   }
 });
 
-// Get market summary with statistics (average price per product over time range)
-router.get('/markets/:market/summary', async (req: Request, res: Response): Promise<void> => {
-  try {
-    const { market } = req.params;
-    const days = req.query.days ? parseInt(req.query.days as string) : 30;
-    const endDate = new Date();
-    const startDate = new Date();
-    startDate.setDate(endDate.getDate() - days);
-
-    const collection = getCollection();
-
-    // Aggregate average price per product in given date range and market
-    const pipeline = [
-      { $match: { market, date: { $gte: startDate, $lte: endDate } } },
-      { $unwind: '$priceItems' },
-      {
-        $group: {
-          _id: '$priceItems.product',
-          averagePrice: { $avg: '$priceItems.price' },
-          minPrice: { $min: '$priceItems.price' },
-          maxPrice: { $max: '$priceItems.price' },
-          count: { $sum: 1 }
-        }
-      },
-      {
-        $project: {
-          product: '$_id',
-          averagePrice: 1,
-          minPrice: 1,
-          maxPrice: 1,
-          count: 1,
-          _id: 0
-        }
-      },
-      { $sort: { product: 1 } }
-    ];
-
-    const summary = await collection.aggregate(pipeline).toArray();
-
-    res.json({
-      success: true,
-      data: summary
-    });
-  } catch (error) {
-    console.error('Error generating market summary:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to generate market summary',
-      error: error instanceof Error ? error.message : String(error)
-    });
-  }
-});
-
 // Get summary across all markets
 router.get('/markets/all/summary', async (req: Request, res: Response): Promise<void> => {
   try {
@@ -253,6 +200,60 @@ router.get('/markets/all/summary', async (req: Request, res: Response): Promise<
     });
   }
 });
+
+// Get market summary with statistics (average price per product over time range)
+router.get('/markets/:market/summary', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { market } = req.params;
+    const days = req.query.days ? parseInt(req.query.days as string) : 30;
+    const endDate = new Date();
+    const startDate = new Date();
+    startDate.setDate(endDate.getDate() - days);
+
+    const collection = getCollection();
+
+    // Aggregate average price per product in given date range and market
+    const pipeline = [
+      { $match: { market, date: { $gte: startDate, $lte: endDate } } },
+      { $unwind: '$priceItems' },
+      {
+        $group: {
+          _id: '$priceItems.product',
+          averagePrice: { $avg: '$priceItems.price' },
+          minPrice: { $min: '$priceItems.price' },
+          maxPrice: { $max: '$priceItems.price' },
+          count: { $sum: 1 }
+        }
+      },
+      {
+        $project: {
+          product: '$_id',
+          averagePrice: 1,
+          minPrice: 1,
+          maxPrice: 1,
+          count: 1,
+          _id: 0
+        }
+      },
+      { $sort: { product: 1 } }
+    ];
+
+    const summary = await collection.aggregate(pipeline).toArray();
+
+    res.json({
+      success: true,
+      data: summary
+    });
+  } catch (error) {
+    console.error('Error generating market summary:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to generate market summary',
+      error: error instanceof Error ? error.message : String(error)
+    });
+  }
+});
+
 
 // Get price trend for a specific product
 router.get('/markets/:market/products/:product/trend', async (req: Request, res: Response): Promise<void> => {
