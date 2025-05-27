@@ -27,6 +27,51 @@ router.get('/markets', async (req: Request, res: Response): Promise<void> => {
   }
 });
 
+// Get latest activity across all markets
+router.get('/markets/latest', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const collection = getCollection();
+    
+    // Get the most recent submission from each market
+    const pipeline = [
+      {
+        $sort: { date: -1 }
+      },
+      {
+        $group: {
+          _id: '$market',
+          lastReportedAt: { $first: '$date' },
+          latestData: { $first: '$$ROOT' }
+        }
+      },
+      {
+        $project: {
+          market: '$_id',
+          lastReportedAt: '$lastReportedAt',
+          _id: 0
+        }
+      },
+      {
+        $sort: { lastReportedAt: -1 }
+      }
+    ];
+
+    const latestActivity = await collection.aggregate(pipeline).toArray();
+
+    res.json({
+      success: true,
+      data: latestActivity
+    });
+  } catch (error) {
+    console.error('Error fetching latest markets activity:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch latest markets activity',
+      error: error instanceof Error ? error.message : String(error)
+    });
+  }
+});
+
 // Get latest prices for a specific market
 router.get('/markets/:market/latest', async (req: Request, res: Response): Promise<void> => {
   try {
@@ -103,6 +148,72 @@ router.get('/markets/:market/summary', async (req: Request, res: Response): Prom
     res.json({
       success: true,
       data: summary
+    });
+  } catch (error) {
+    console.error('Error generating market summary:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to generate market summary',
+      error: error instanceof Error ? error.message : String(error)
+    });
+  }
+});
+
+// Get summary across all markets
+router.get('/markets/all/summary', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const days = req.query.days ? parseInt(req.query.days as string) : 30;
+    const endDate = new Date();
+    const startDate = new Date();
+    startDate.setDate(endDate.getDate() - days);
+
+    const collection = getCollection();
+
+    // Aggregate statistics across all markets
+    const pipeline = [
+      { $match: { date: { $gte: startDate, $lte: endDate } } },
+      { $unwind: '$priceItems' },
+      {
+        $group: {
+          _id: '$priceItems.product',
+          averagePrice: { $avg: '$priceItems.price' },
+          minPrice: { $min: '$priceItems.price' },
+          maxPrice: { $max: '$priceItems.price' },
+          count: { $sum: 1 },
+          markets: { $addToSet: '$market' }
+        }
+      },
+      {
+        $project: {
+          product: '$_id',
+          averagePrice: { $round: ['$averagePrice', 0] },
+          minPrice: 1,
+          maxPrice: 1,
+          count: 1,
+          marketCount: { $size: '$markets' },
+          _id: 0
+        }
+      },
+      { $sort: { product: 1 } }
+    ];
+
+    const summary = await collection.aggregate(pipeline).toArray();
+
+    // Get total markets and submissions count
+    const totalMarkets = await collection.distinct('market').then(markets => markets.length);
+    const totalSubmissions = await collection.countDocuments({ date: { $gte: startDate, $lte: endDate } });
+
+    res.json({
+      success: true,
+      data: {
+        summary,
+        totalMarkets,
+        totalSubmissions,
+        dateRange: {
+          start: startDate,
+          end: endDate
+        }
+      }
     });
   } catch (error) {
     console.error('Error generating market summary:', error);

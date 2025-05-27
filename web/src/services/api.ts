@@ -16,6 +16,20 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     console.error('API Error:', error);
+    if (error.code === 'ERR_NETWORK') {
+      console.error('Network error - check if API server is running and CORS is configured');
+    }
+    return Promise.reject(error);
+  }
+);
+
+// Add request interceptor for debugging
+api.interceptors.request.use(
+  (config) => {
+    console.log(`Making ${config.method?.toUpperCase()} request to: ${config.baseURL}${config.url}`);
+    return config;
+  },
+  (error) => {
     return Promise.reject(error);
   }
 );
