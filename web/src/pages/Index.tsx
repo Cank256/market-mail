@@ -52,7 +52,6 @@ const Index = () => {
   // Statistics state
   const [statistics, setStatistics] = useState<{
     contributorsCount?: number;
-    priceUpdatesCount?: number;
     priceUpdatesThisMonth?: number;
     avgResponseTime?: string;
     uptime?: string;
@@ -173,7 +172,6 @@ const Index = () => {
           activeMarketsCount={statistics.activeMarketsCount || availableMarkets.length}
           contributorsCount={statistics.contributorsCount}
           priceUpdatesThisMonth={statistics.priceUpdatesThisMonth}
-          priceUpdatesCount={statistics.priceUpdatesCount}
           avgResponseTime={statistics.avgResponseTime}
           uptime={statistics.uptime}
           newContributorsThisWeek={statistics.newContributorsThisWeek}

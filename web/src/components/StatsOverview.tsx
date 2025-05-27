@@ -5,7 +5,6 @@ interface StatsOverviewProps {
   activeMarketsCount?: number;
   contributorsCount?: number;
   priceUpdatesThisMonth?: number;
-  priceUpdatesCount?: number;
   avgResponseTime?: string;
   uptime?: string;
   newContributorsThisWeek?: number;
@@ -16,7 +15,6 @@ export const StatsOverview = ({
   activeMarketsCount, 
   contributorsCount, 
   priceUpdatesThisMonth, 
-  priceUpdatesCount, 
   avgResponseTime, 
   uptime, 
   newContributorsThisWeek, 
@@ -44,7 +42,7 @@ export const StatsOverview = ({
       value: priceUpdatesThisMonth !== undefined ? priceUpdatesThisMonth.toLocaleString() : "...",
       description: "This month",
       icon: TrendingUp,
-      trend: priceUpdatesThisMonth !== undefined ? `+${priceUpdatesThisMonth - priceUpdatesCount} today` : "Loading...",
+      trend: priceUpdatesToday !== undefined ? `+${priceUpdatesToday} today` : "Loading...",
       color: "text-purple-600"
     },
     {
