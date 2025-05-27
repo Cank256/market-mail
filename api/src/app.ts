@@ -4,7 +4,7 @@ import { errorHandler } from './middleware/errorHandler';
 import { config } from './config';
 import { EmailService } from './services/emailService';
 import publicRoutes from './routes/public';
-import webhookRouter from './webhook';
+import webhookRouter from './routes/webhook';
 import { connectMongoDB } from './config/db';
 
 const app = express();
