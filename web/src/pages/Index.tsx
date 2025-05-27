@@ -108,9 +108,14 @@ const Index = () => {
     loadMarketActivity();
   }, []);
 
-  const handleLocateMarket = (marketName: string) => {
-    console.log(`Locating ${marketName} market on map`);
-    // Placeholder for map integration
+  const handleLocateMarket = (marketName: string, country: string) => {
+    console.log(`Locating ${marketName} market in ${country}`);
+    // Create Google Maps search URL with market name and country
+    const searchQuery = encodeURIComponent(`${marketName} market ${country}`);
+    const mapsUrl = `https://maps.google.com/maps?q=${searchQuery}`;
+    
+    // Open in new tab
+    window.open(mapsUrl, '_blank');
   };
 
   return (

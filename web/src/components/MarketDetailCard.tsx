@@ -12,13 +12,14 @@ interface ProductPrice {
 
 interface MarketDetail {
   market: string;
+  country: string;
   products: ProductPrice[];
   // lastReportedAt: string; // Available if needed
 }
 
 interface MarketDetailCardProps {
   marketName: string;
-  onLocateMarket: (marketName: string) => void;
+  onLocateMarket: (marketName: string, country: string) => void;
 }
 
 export const MarketDetailCard = ({ marketName, onLocateMarket }: MarketDetailCardProps) => {
@@ -35,6 +36,7 @@ export const MarketDetailCard = ({ marketName, onLocateMarket }: MarketDetailCar
         // Transform MarketPrice to MarketDetail format
         const marketDetail: MarketDetail = {
           market: data.market,
+          country: data.country || 'Uganda', // Default to Uganda if country is not available
           products: data.priceItems.map(item => ({
             product: item.product,
             price: item.price
@@ -86,7 +88,7 @@ export const MarketDetailCard = ({ marketName, onLocateMarket }: MarketDetailCar
             variant="outline" 
             size="sm" 
             className="w-full"
-            onClick={() => onLocateMarket(marketName)}
+            onClick={() => onLocateMarket(marketName, 'Uganda')} // Default to Uganda if no data
           >
             <Locate className="h-4 w-4 mr-2" />
             Locate Market
@@ -124,7 +126,7 @@ export const MarketDetailCard = ({ marketName, onLocateMarket }: MarketDetailCar
           variant="outline" 
           size="sm" 
           className="w-full"
-          onClick={() => onLocateMarket(marketDetail.market)}
+          onClick={() => onLocateMarket(marketDetail.market, marketDetail.country)}
         >
           <Locate className="h-4 w-4 mr-2" />
           Locate Market

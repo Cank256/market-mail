@@ -8,6 +8,7 @@ export interface PriceItem {
 
 export interface MarketPrice {
   _id?: string;
+  country: string;
   market: string;
   date: string;
   submitterEmail: string;
