@@ -172,3 +172,23 @@ export const fetchMarketData = async (): Promise<MarketMapData[]> => {
     ];
   }
 };
+
+export const fetchPlatformStatistics = async (days: number = 30) => {
+  try {
+    const response = await api.get('/statistics/overview', {
+      params: { days }
+    });
+    return {
+      success: true,
+      data: response.data.data,
+      message: 'Platform statistics fetched successfully'
+    };
+  } catch (error) {
+    console.error('Error fetching platform statistics:', error);
+    return {
+      success: false,
+      data: null,
+      message: error instanceof Error ? error.message : 'Failed to fetch platform statistics'
+    };
+  }
+};

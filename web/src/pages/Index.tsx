@@ -11,7 +11,7 @@ import { StatsOverview } from "@/components/StatsOverview";
 import { EmailInstructions } from "@/components/EmailInstructions";
 import { CountryDropdown } from "@/components/CountryDropdown";
 import { MarketDetailCard } from "@/components/MarketDetailCard"; // Import the new component
-import { fetchMarkets, fetchLatestMarketsActivity } from "@/services/api"; // Import API service functions
+import { fetchMarkets, fetchLatestMarketsActivity, fetchPlatformStatistics } from "@/services/api"; // Import API service functions
 
 interface MarketInfo {
   name: string;
@@ -48,6 +48,18 @@ const Index = () => {
   const [marketActivityData, setMarketActivityData] = useState<MarketActivityItem[]>([]);
   const [activityLoading, setActivityLoading] = useState(true);
   const [activityError, setActivityError] = useState<string | null>(null);
+  
+  // Statistics state
+  const [statistics, setStatistics] = useState<{
+    contributorsCount?: number;
+    priceUpdatesCount?: number;
+    priceUpdatesThisMonth?: number;
+    avgResponseTime?: string;
+    uptime?: string;
+    newContributorsThisWeek?: number;
+    priceUpdatesToday?: number;
+    activeMarketsCount?: number;
+  }>({});
 
   useEffect(() => {
     const loadMarkets = async () => {
@@ -104,8 +116,22 @@ const Index = () => {
       }
     };
 
+    const loadStatistics = async () => {
+      try {
+        const result = await fetchPlatformStatistics();
+        if (result.success && result.data) {
+          setStatistics(result.data);
+        } else {
+          console.error("Failed to fetch platform statistics:", result.message);
+        }
+      } catch (error) {
+        console.error("Error fetching platform statistics:", error);
+      }
+    };
+
     loadMarkets();
     loadMarketActivity();
+    loadStatistics();
   }, []);
 
   const handleLocateMarket = (marketName: string, country: string) => {
@@ -143,7 +169,16 @@ const Index = () => {
       </header>
 
       <div className="container mx-auto px-4 py-8">
-        <StatsOverview activeMarketsCount={availableMarkets.length} />
+        <StatsOverview 
+          activeMarketsCount={statistics.activeMarketsCount || availableMarkets.length}
+          contributorsCount={statistics.contributorsCount}
+          priceUpdatesThisMonth={statistics.priceUpdatesThisMonth}
+          priceUpdatesCount={statistics.priceUpdatesCount}
+          avgResponseTime={statistics.avgResponseTime}
+          uptime={statistics.uptime}
+          newContributorsThisWeek={statistics.newContributorsThisWeek}
+          priceUpdatesToday={statistics.priceUpdatesToday}
+        />
 
         <div className="mb-8 flex flex-wrap gap-4 items-center justify-between">
           <div className="flex gap-4">

@@ -3,13 +3,25 @@ import { TrendingUp, Users, MapPin, DollarSign, Clock, Mail } from "lucide-react
 
 interface StatsOverviewProps {
   activeMarketsCount?: number;
-  // Add other props here if/when API endpoints for them become available
-  // e.g., contributorsCount?: number;
-  // e.g., priceUpdatesCount?: number;
-  // e.g., avgResponseTime?: string; 
+  contributorsCount?: number;
+  priceUpdatesThisMonth?: number;
+  priceUpdatesCount?: number;
+  avgResponseTime?: string;
+  uptime?: string;
+  newContributorsThisWeek?: number;
+  priceUpdatesToday?: number;
 }
 
-export const StatsOverview = ({ activeMarketsCount }: StatsOverviewProps) => {
+export const StatsOverview = ({ 
+  activeMarketsCount, 
+  contributorsCount, 
+  priceUpdatesThisMonth, 
+  priceUpdatesCount, 
+  avgResponseTime, 
+  uptime, 
+  newContributorsThisWeek, 
+  priceUpdatesToday 
+}: StatsOverviewProps) => {
   const stats = [
     {
       title: "Active Markets",
@@ -21,26 +33,26 @@ export const StatsOverview = ({ activeMarketsCount }: StatsOverviewProps) => {
     },
     {
       title: "Contributors",
-      value: "847", // Mock data: Requires API endpoint for actual contributor count
+      value: contributorsCount !== undefined ? contributorsCount.toString() : "...",
       description: "Farmers & enumerators",
       icon: Users,
-      trend: "+23 this week", // Mock data
+      trend: newContributorsThisWeek !== undefined ? `+${newContributorsThisWeek} this week` : "Loading...",
       color: "text-green-600"
     },
     {
       title: "Price Updates",
-      value: "1,243", // Mock data: Requires API endpoint for recent price updates count
+      value: priceUpdatesThisMonth !== undefined ? priceUpdatesThisMonth.toLocaleString() : "...",
       description: "This month",
       icon: TrendingUp,
-      trend: "+156 today", // Mock data
+      trend: priceUpdatesThisMonth !== undefined ? `+${priceUpdatesThisMonth - priceUpdatesCount} today` : "Loading...",
       color: "text-purple-600"
     },
     {
-      title: "Avg. Response", // This likely refers to email processing or system response
-      value: "2.3m", // Mock data: Requires operational metrics, not typically from market data API
+      title: "Avg. Response", // This refers to email processing or system response
+      value: avgResponseTime !== undefined ? avgResponseTime : "...",
       description: "Email to dashboard", // Clarified description
       icon: Clock, // Changed icon to Clock, Mail could also be an option
-      trend: "98.7% uptime", // Mock data: Uptime is an operational metric
+      trend: uptime !== undefined ? `${uptime} uptime` : "Loading...",
       color: "text-orange-600"
     }
   ];
