@@ -11,6 +11,7 @@ export interface IPriceItem {
 // Interface for the market price document
 export interface IMarketPrice {
   _id?: ObjectId;
+  country: string;
   market: string;
   date: Date;
   submitterEmail: string;
@@ -69,6 +70,11 @@ class MarketPriceModel {
   // Method to find all unique markets
   async findAllMarkets(): Promise<string[]> {
     return this.getCollection().distinct('market');
+  }
+
+  // Method to find all unique countries
+  async findAllCountries(): Promise<string[]> {
+    return this.getCollection().distinct('country');
   }
 
   // Method to find documents with options (sort, skip, limit)

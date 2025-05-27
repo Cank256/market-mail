@@ -1,11 +1,23 @@
 // This file exports TypeScript types and interfaces used throughout the application.
 
+export interface PriceItem {
+    product: string;
+    unit: string;
+    price: number;
+}
+
 export interface MarketPrice {
+    _id?: string;
+    country: string;
     market: string;
     date: Date;
-    maize: number; // price per kg
-    beans: number; // price per kg
-    tomatoes: number; // price per crate
+    submitterEmail: string;
+    priceItems: PriceItem[];
+    messageId?: string;
+    originalRecipient?: string;
+    subject?: string;
+    createdAt: Date;
+    updatedAt: Date;
 }
 
 export interface MarketPriceResponse {
@@ -15,11 +27,10 @@ export interface MarketPriceResponse {
 }
 
 export interface EmailPayload {
+    country: string;
     market: string;
     date: string;
-    maize: number;
-    beans: number;
-    tomatoes: number;
+    priceItems: PriceItem[];
 }
 
 export interface ErrorResponse {

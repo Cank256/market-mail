@@ -8,13 +8,15 @@ import { useState } from "react";
 export const EmailInstructions = () => {
   const [copied, setCopied] = useState(false);
 
-  const emailTemplate = `Market: Nakasero
-Date: 2025-05-24
-Maize (kg): 1800
-Beans (kg): 2900
-Tomatoes (crate): 9500
-Rice (kg): 3200
-Onions (kg): 2100`;
+  const emailTemplate = `
+  Country: Uganda
+  Market: Nakasero
+  Date: 2025-05-24
+  Maize (kg): 1800
+  Beans (kg): 2900
+  Tomatoes (crate): 9500
+  Rice (kg): 3200
+  Onions (kg): 2100`;
 
   const copyToClipboard = () => {
     navigator.clipboard.writeText(emailTemplate);
@@ -31,7 +33,7 @@ Onions (kg): 2100`;
             How to Contribute Market Prices
           </CardTitle>
           <CardDescription className="text-green-700">
-            Help build Uganda's largest crowdsourced market price database
+            Help build East Africa's largest crowdsourced market price database
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -39,7 +41,7 @@ Onions (kg): 2100`;
             <div className="text-center p-4 bg-white rounded-lg">
               <Mail className="h-8 w-8 mx-auto mb-2 text-blue-600" />
               <h3 className="font-semibold mb-1">1. Send Email</h3>
-              <p className="text-sm text-gray-600">Send prices to prices@marketmail.app</p>
+              <p className="text-sm text-gray-600">Send prices to 4f74c4c742d8684e4e7e6fa55f8f97d0@inbound.postmarkapp.com</p>
             </div>
             <div className="text-center p-4 bg-white rounded-lg">
               <Send className="h-8 w-8 mx-auto mb-2 text-orange-600" />

@@ -7,6 +7,7 @@ interface PriceItem {
 }
 
 interface MarketData {
+  country: string;
   market: string;
   date: Date;
   submitterEmail: string;
@@ -75,7 +76,7 @@ export class ParserService {
     return `
       <div style="font-family: Arial, sans-serif; max-width: 600px;">
         <h2>Market Price Data Processed</h2>
-        <p>Thank you for submitting prices for <strong>${marketData.market}</strong> on <strong>${marketData.date.toDateString()}</strong>.</p>
+        <p>Thank you for submitting prices for <strong>${marketData.market}</strong> in <strong>${marketData.country}</strong> on <strong>${marketData.date.toDateString()}</strong>.</p>
         
         <table style="width: 100%; border-collapse: collapse; margin-top: 15px;">
           <thead>
@@ -102,7 +103,7 @@ export class ParserService {
    * @returns Plain text content with a formatted table
    */
   static formatToText(marketData: MarketData): string {
-    const header = `MARKET: ${marketData.market} - DATE: ${marketData.date.toDateString()}\n\n`;
+    const header = `COUNTRY: ${marketData.country}\nMARKET: ${marketData.market} - DATE: ${marketData.date.toDateString()}\n\n`;
     const divider = '----------------------------------------\n';
     const tableHeader = 'PRODUCT          UNIT          PRICE\n';
     

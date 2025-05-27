@@ -10,6 +10,7 @@ const PriceItemSchema = z.object({
 });
 
 const MarketDataSchema = z.object({
+  country: z.string(),
   market: z.string(),
   date: z.date(),
   submitterEmail: z.string().email(),
@@ -43,6 +44,10 @@ export async function parseMarketEmail(emailContent: string, fromEmail: string):
  * Parse the email using regex patterns
  */
 function parseWithRegex(emailContent: string, fromEmail: string): MarketData {
+  // Extract country name
+  const countryMatch = emailContent.match(/Country:\s*([^\n]+)/i);
+  const country = countryMatch ? countryMatch[1].trim() : null;
+
   // Extract market name
   const marketMatch = emailContent.match(/Market:\s*([^\n]+)/i);
   const market = marketMatch ? marketMatch[1].trim() : null;
@@ -76,6 +81,10 @@ function parseWithRegex(emailContent: string, fromEmail: string): MarketData {
   }
 
   // If we couldn't extract required data, throw an error
+  if (!country) {
+    throw new Error('Could not extract country name from email');
+  }
+
   if (!market) {
     throw new Error('Could not extract market name from email');
   }
@@ -86,6 +95,7 @@ function parseWithRegex(emailContent: string, fromEmail: string): MarketData {
 
   // Validate and return the data
   return MarketDataSchema.parse({
+    country,
     market,
     date,
     submitterEmail: fromEmail,
@@ -123,6 +133,10 @@ async function parseWithOpenAI(emailContent: string, fromEmail: string): Promise
             parameters: {
               type: 'object',
               properties: {
+                country: {
+                  type: 'string',
+                  description: 'The name of the country'
+                },
                 market: {
                   type: 'string',
                   description: 'The name of the market'
@@ -154,7 +168,7 @@ async function parseWithOpenAI(emailContent: string, fromEmail: string): Promise
                   }
                 }
               },
-              required: ['market', 'date', 'priceItems']
+              required: ['country', 'market', 'date', 'priceItems']
             }
           }
         ],
@@ -177,6 +191,7 @@ async function parseWithOpenAI(emailContent: string, fromEmail: string): Promise
       
       // Validate and return the data
       return MarketDataSchema.parse({
+        country: extractedData.country,
         market: extractedData.market,
         date: dateObj,
         submitterEmail: fromEmail,

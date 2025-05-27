@@ -20,7 +20,7 @@ router.post('/inbound', async (req: Request, res: Response): Promise<void> => {
         const textContent = ParserService.formatToText(marketData);
         
         // Send confirmation email
-        const subject = `Market Price Data Processed - ${marketData.market}`;
+        const subject = `Market Price Data Processed - ${marketData.market}, ${marketData.country}`;
         await EmailService.sendConfirmation(
             marketData.submitterEmail,
             subject,
@@ -28,11 +28,12 @@ router.post('/inbound', async (req: Request, res: Response): Promise<void> => {
             textContent
         );
 
-        console.log(`Successfully processed market data for ${marketData.market} from ${marketData.submitterEmail}`);
+        console.log(`Successfully processed market data for ${marketData.market} in ${marketData.country} from ${marketData.submitterEmail}`);
 
         res.status(200).json({
             message: 'Market price data received and saved successfully.',
             data: {
+                country: marketData.country,
                 market: marketData.market,
                 date: marketData.date,
                 itemCount: marketData.priceItems.length
