@@ -1,4 +1,4 @@
-import { config } from './config';
+import { config } from '../config';
 import axios from 'axios';
 import { z } from 'zod';
 
@@ -61,7 +61,7 @@ function parseWithRegex(emailContent: string, fromEmail: string): MarketData {
 
   // Extract price items
   const priceItems: PriceItem[] = [];
-  const priceItemRegex = /([^(]+)\s*\(([^)]+)\):\s*([0-9\s]+)/g;
+  const priceItemRegex = /^([^(\n\r]+?)\s*\(([^)]+)\):\s*([0-9\s]+)/gm;
   
   let match;
   while ((match = priceItemRegex.exec(emailContent)) !== null) {

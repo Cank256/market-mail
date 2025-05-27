@@ -1,4 +1,4 @@
-import { parseMarketEmail } from '../parseMarketEmail';
+import { parseMarketEmail } from './parseMarketEmail';
 
 interface PriceItem {
   product: string;
