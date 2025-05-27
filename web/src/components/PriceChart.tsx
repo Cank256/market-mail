@@ -1,10 +1,10 @@
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { useEffect, useState } from 'react';
-import { fetchMarketSummary } from "../services/api";
+import { fetchMarketHistory } from "../services/api";
 
 interface PriceChartProps {
   showDetailed?: boolean;
-  selectedMarket?: string; // To fetch data for a specific market
+  selectedMarket?: string; // Now optional since we can show all market data by default
 }
 
 interface PriceDataPoint {
@@ -12,7 +12,7 @@ interface PriceDataPoint {
   [productKey: string]: number | string; // Product prices, and the date string
 }
 
-export const PriceChart = ({ showDetailed = false, selectedMarket }: PriceChartProps) => {
+export const PriceChart = ({ showDetailed = false, selectedMarket = "all" }: PriceChartProps) => {
   const [chartData, setChartData] = useState<PriceDataPoint[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -23,40 +23,36 @@ export const PriceChart = ({ showDetailed = false, selectedMarket }: PriceChartP
       setLoading(true);
       setError(null);
       try {
-        // Use centralized API service to fetch market summary
-        const marketParam = selectedMarket && selectedMarket !== "all" ? selectedMarket : "all"; // Use a default or aggregated market if 'all'
-        const days = 30; // Fetch 30 days summary for trends
+        // Use market history to get time-series data for chart
+        // If no market is selected or "all" is selected, show aggregated data from all markets
+        const marketParam = (selectedMarket && selectedMarket !== "all") ? selectedMarket : "all";
+
+        const days = 30;
+        const endDate = new Date();
+        const startDate = new Date();
+        startDate.setDate(endDate.getDate() - days);
         
-        const result = await fetchMarketSummary(marketParam, days);
+        const result = await fetchMarketHistory(marketParam, 1, days, startDate, endDate);
 
-        if (result.success && result.data) {
-          // The API's /summary endpoint returns data structured as MarketSummary:
-          // { market, startDate, endDate, products: [{ product, unit, averagePrice, minPrice, maxPrice, count, history: [{date, price}] }] }
-          // We need to transform this into the format expected by the chart: { date, product1: price, product2: price }
+        if (result.success && result.data && Array.isArray(result.data) && result.data.length > 0) {
+          console.log('Market history data:', result.data); // Debug log
           
-          let transformedData: PriceDataPoint[] = [];
-          const tempProductKeys = new Set<string>();
-
-          if (Array.isArray(result.data)) { // If API returns an array of summaries (e.g. for "all" markets)
-            // This case needs clarification on how to aggregate multiple market summaries for the chart.
-            // For now, let's assume we'll use the first market's summary if 'all' is selected, or handle as error/empty.
-            // Or, the frontend should pick one market if 'all' is selected for this detailed chart.
-            // console.warn("Chart data for 'all' markets summary needs specific handling. Using first available or empty.");
-            // For simplicity, if 'all' is selected, we might show a generic message or data from a default market if available.
-            // This part needs to be decided based on desired UX for 'all' markets trend chart.
-            // For now, if result.data is an array, we'll try to process the first element if it exists.
-            const summaryToProcess = result.data.length > 0 ? result.data[0] : null;
-            if (summaryToProcess && summaryToProcess.products) {
-              transformedData = transformSummaryToChartData(summaryToProcess.products, tempProductKeys);
-            }
-          } else if (result.data.products) { // Single market summary
-            transformedData = transformSummaryToChartData(result.data.products, tempProductKeys);
+          // Transform market history data into chart format
+          // result.data contains: [{ _id, market, date, priceItems: [{ product, unit, price }] }]
+          const transformedData = transformHistoryToChartData(result.data);
+          
+          if (transformedData.chartData.length > 0) {
+            setChartData(transformedData.chartData);
+            setProductKeys(transformedData.productKeys);
+          } else {
+            setError("No price data available for the selected time period");
+            setChartData([]);
+            setProductKeys([]);
           }
-
-          setChartData(transformedData);
-          setProductKeys(Array.from(tempProductKeys));
         } else {
-          throw new Error(result.message || "Failed to fetch chart data");
+          setError("No historical data available" + (marketParam === "all" ? "" : " for this market"));
+          setChartData([]);
+          setProductKeys([]);
         }
       } catch (err) {
         setError(err instanceof Error ? err.message : "An unknown error occurred");
@@ -67,23 +63,44 @@ export const PriceChart = ({ showDetailed = false, selectedMarket }: PriceChartP
       }
     };
 
-    // Helper function to transform API summary data to chart data format
-    const transformSummaryToChartData = (products: Array<{ product: string; history?: Array<{ date: string; price: number }> }>, productKeySet: Set<string>): PriceDataPoint[] => {
+    // Helper function to transform market history data to chart data format
+    const transformHistoryToChartData = (historyData: Array<{
+      _id: string;
+      market: string;
+      date: string;
+      priceItems: Array<{ product: string; price: number; unit: string }>;
+    }>): { chartData: PriceDataPoint[], productKeys: string[] } => {
       const dataByDate: { [date: string]: PriceDataPoint } = {};
-      products.forEach(product => {
-        const productKey = `${product.product.toLowerCase().replace(/\s/g, '_')}`; // e.g., maize_kg
-        productKeySet.add(productKey);
-        if (product.history && Array.isArray(product.history)) {
-          product.history.forEach((historyEntry: { date: string; price: number }) => {
-            const dateStr = new Date(historyEntry.date).toISOString().split('T')[0];
-            if (!dataByDate[dateStr]) {
-              dataByDate[dateStr] = { date: dateStr };
-            }
-            dataByDate[dateStr][productKey] = historyEntry.price;
-          });
+      const productKeySet = new Set<string>();
+
+      historyData.forEach(entry => {
+        const dateStr = new Date(entry.date).toISOString().split('T')[0];
+        
+        if (!dataByDate[dateStr]) {
+          dataByDate[dateStr] = { date: dateStr };
         }
+
+        entry.priceItems.forEach((item: { product: string; price: number; unit: string }) => {
+          const productKey = `${item.product.toLowerCase().replace(/\s/g, '_')}_${item.unit}`;
+          productKeySet.add(productKey);
+          
+          // If multiple entries for same product on same date, take average
+          if (dataByDate[dateStr][productKey]) {
+            dataByDate[dateStr][productKey] = (dataByDate[dateStr][productKey] as number + item.price) / 2;
+          } else {
+            dataByDate[dateStr][productKey] = item.price;
+          }
+        });
       });
-      return Object.values(dataByDate).sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+      const chartData = Object.values(dataByDate).sort((a, b) => 
+        new Date(a.date).getTime() - new Date(b.date).getTime()
+      );
+
+      return { 
+        chartData, 
+        productKeys: Array.from(productKeySet) 
+      };
     };
 
     fetchChartData();

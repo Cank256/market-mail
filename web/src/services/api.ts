@@ -113,7 +113,9 @@ export const fetchMarketHistory = async (
     if (startDate) params.startDate = startDate.toISOString();
     if (endDate) params.endDate = endDate.toISOString();
     
-    const response = await api.get(`/markets/${market}/history`, { params });
+    // Use "all" endpoint for aggregated data across all markets
+    const endpoint = market === "all" ? '/markets/all/history' : `/markets/${market}/history`;
+    const response = await api.get(endpoint, { params });
     return response.data;
   } catch (error) {
     console.error('Error fetching market history:', error);

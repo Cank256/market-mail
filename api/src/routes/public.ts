@@ -369,6 +369,86 @@ router.get('/trends/products', async (req: Request, res: Response): Promise<void
   }
 });
 
+// Get historical data across all markets with aggregation for charts
+router.get('/markets/all/history', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const page = req.query.page ? parseInt(req.query.page as string) : 1;
+    const limit = req.query.limit ? parseInt(req.query.limit as string) : 30;
+    const startDateStr = req.query.startDate as string | undefined;
+    const endDateStr = req.query.endDate as string | undefined;
+
+    const query: any = {};
+
+    if (startDateStr || endDateStr) {
+      query.date = {};
+      if (startDateStr) query.date.$gte = new Date(startDateStr);
+      if (endDateStr) query.date.$lte = new Date(endDateStr);
+    }
+
+    const collection = getCollection();
+
+    // For "all" markets, aggregate data by date and average prices across markets
+    const pipeline = [
+      { $match: query },
+      { $unwind: '$priceItems' },
+      {
+        $group: {
+          _id: {
+            date: '$date',
+            product: '$priceItems.product',
+            unit: '$priceItems.unit'
+          },
+          averagePrice: { $avg: '$priceItems.price' },
+          markets: { $addToSet: '$market' }
+        }
+      },
+      {
+        $group: {
+          _id: '$_id.date',
+          priceItems: {
+            $push: {
+              product: '$_id.product',
+              unit: '$_id.unit',
+              price: { $round: ['$averagePrice', 0] },
+              marketCount: { $size: '$markets' }
+            }
+          }
+        }
+      },
+      {
+        $project: {
+          _id: { $toString: '$_id' },
+          market: 'All Markets',
+          date: '$_id',
+          priceItems: 1
+        }
+      },
+      { $sort: { date: -1 } },
+      { $limit: limit }
+    ];
+
+    const data = await collection.aggregate(pipeline).toArray();
+
+    res.json({
+      success: true,
+      data,
+      pagination: {
+        page,
+        limit,
+        total: data.length,
+        pages: 1
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching all markets history:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch all markets history',
+      error: error instanceof Error ? error.message : String(error)
+    });
+  }
+});
+
 // Get historical data for a market with pagination
 router.get('/markets/:market/history', async (req: Request, res: Response): Promise<void> => {
   try {
