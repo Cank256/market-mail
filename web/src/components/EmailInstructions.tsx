@@ -41,7 +41,7 @@ export const EmailInstructions = () => {
             <div className="text-center p-4 bg-white rounded-lg">
               <Mail className="h-8 w-8 mx-auto mb-2 text-blue-600" />
               <h3 className="font-semibold mb-1">1. Send Email</h3>
-              <p className="text-sm text-gray-600">Send prices to 4f74c4c742d8684e4e7e6fa55f8f97d0@inbound.postmarkapp.com</p>
+              <p className="text-sm text-gray-600">Send prices to send@marketmail.canktech.com</p>
             </div>
             <div className="text-center p-4 bg-white rounded-lg">
               <Send className="h-8 w-8 mx-auto mb-2 text-orange-600" />
